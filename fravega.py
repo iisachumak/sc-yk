@@ -21,40 +21,50 @@ def fravega():
         query = st.text_input("Ingrese el producto a buscar:")
     with col2:
         limit_pages = st.number_input("Número de páginas a buscar:", min_value=1, max_value=10, value=1)
+    
+    # Mover la lógica de búsqueda fuera del botón
+    if 'df' not in st.session_state:
+        st.session_state.df = None
+        st.session_state.last_query = None
         
     if st.button(label="Buscar", type="primary"):
         if query:  # Solo ejecutar si hay texto ingresado
-            # Usar session_state para almacenar el DataFrame
-            if 'df' not in st.session_state or st.session_state.last_query != query:
+            if st.session_state.last_query != query:
                 st.session_state.df = extraer_info(query, limit_pages)
                 st.session_state.last_query = query
-            
-            df = st.session_state.df
-            st.dataframe(df, use_container_width=True)
-
-            # Guardar en CSV
-            csv_buffer = BytesIO()
-            df.to_excel(csv_buffer, index=False)
-            csv_buffer.seek(0)
-            st.download_button(
-                label=" 💾 Descargar XLSX", 
-                data=csv_buffer, 
-                file_name="productos_fravega.xlsx", 
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-            # Mostrar las imágenes
-            st.subheader("Imágenes de los productos")
-            cols = st.columns(4)
-            
-            for idx, (imagen_url, titulo) in enumerate(zip(df['Imagen_URL'], df['Nombre_del_producto'])):
-                with cols[idx % 4]:
-                    try:
-                        st.image(imagen_url, caption=titulo)
-                    except Exception as e:
-                        st.error(f"Error al cargar la imagen: {str(e)}")
-        else:
-            st.warning("Por favor, ingrese un producto para buscar")
+    
+    # Mostrar resultados si existen
+    if st.session_state.df is not None:
+        st.dataframe(st.session_state.df, use_container_width=True)
+        
+        # Preparar el archivo Excel para descarga
+        csv_buffer = BytesIO()
+        st.session_state.df.to_excel(csv_buffer, index=False)
+        csv_buffer.seek(0)
+        
+        # Botón de descarga
+        st.download_button(
+            label=" 💾 Descargar XLSX",
+            data=csv_buffer,
+            file_name="productos_fravega.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="download_button"  # Agregar una key única
+        )
+        
+        # Mostrar las imágenes
+        st.subheader("Imágenes de los productos")
+        cols = st.columns(4)
+        
+        for idx, (imagen_url, titulo) in enumerate(zip(st.session_state.df['Imagen_URL'], st.session_state.df['Nombre_del_producto'])):
+            with cols[idx % 4]:
+                try:
+                    st.image(imagen_url, caption=titulo)
+                except Exception as e:
+                    st.error(f"Error al cargar la imagen: {str(e)}")
+    elif query:
+        st.warning("Por favor, presione el botón Buscar para obtener resultados")
+    else:
+        st.warning("Por favor, ingrese un producto para buscar")
 
 def extraer_links(query, limit_pages):
     options = Options()
@@ -175,7 +185,7 @@ def extraer_info(query, limit_pages):
             titulo_texto = titulo.text.strip() if titulo else "Sin título"
             precio_texto = precio.text.strip() if precio else "Sin precio"
             precio_antes_texto = precio_antes.text.strip() if precio_antes else "Sin precio"
-            vendido_por_texto = vendido_por.text.strip() if vendido_por else "Sin vendedor"
+            vendido_por_texto = vendido_por.text.strip() if vendido_por else "Otro seller"
             descuento_texto = descuento.text.strip() if descuento else "Sin descuento"
 
             atributos_texto = ""  # Inicializamos como string vacío
