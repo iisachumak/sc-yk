@@ -134,6 +134,12 @@ def extraer_info(query, limit_pages):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
+    
+    #Selenium
+    options = Options()
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    driver = webdriver.Chrome(options=options)
+
 
     # Crear listas separadas para cada columna
     titulos = []
@@ -143,6 +149,7 @@ def extraer_info(query, limit_pages):
     precios = []
     urls = []
     imagenes = []
+    atributos = []
 
     # Crear barra de progreso
     progress_bar = st.progress(0)
@@ -171,6 +178,42 @@ def extraer_info(query, limit_pages):
             vendido_por_texto = vendido_por.text.strip() if vendido_por else "Sin vendedor"
             descuento_texto = descuento.text.strip() if descuento else "Sin descuento"
 
+            atributos_texto = ""  # Inicializamos como string vacío
+            # Atributos con selenium
+            try:
+                driver.get(link)
+                modal_close = WebDriverWait(driver, 20).until(
+                    EC.presence_of_element_located((By.XPATH, "//button[@class='sc-eifrsQ bvPMIe']"))
+                )
+                WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+                time.sleep(1)
+                if modal_close:
+                    print("Modal encontrado")
+                    modal_close.click()
+                
+                # Hacemos scroll para que se carguen los productos
+                driver.execute_script("window.scrollBy({ top: 1500, behavior: 'smooth' });")
+                time.sleep(1)
+
+                atributos_producto = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//ul[@class='sc-24cb27c0-3 dlgfHc']"))
+                )
+                if atributos_producto:
+                    atributos_lista = atributos_producto.find_elements(By.XPATH, "//span[@class='specName']")
+                    atributos_valores = atributos_producto.find_elements(By.XPATH, "//span[@class='specValue']")
+                    for atributo, valor in zip(atributos_lista, atributos_valores):
+                        atributos_texto += f"{atributo.text.strip()}: {valor.text.strip()} | "
+                    
+                    if not atributos_texto:  # Si no se encontraron atributos
+                        atributos_texto = "Sin atributos"
+                else:
+                    atributos_texto = "Sin atributos"
+
+                print(atributos_texto)
+                
+            except Exception as e:
+                print(f"Error al cargar {link}: {str(e)}")
+
             # Agregar datos a las listas
             titulos.append(titulo_texto)    
             seller.append(vendido_por_texto)
@@ -179,6 +222,7 @@ def extraer_info(query, limit_pages):
             descuentos.append(descuento_texto)
             urls.append(link)
             imagenes.append(imagen)  # Agregar la URL de la imagen
+            atributos.append(atributos_texto)
 
             print(f"Producto agregado: {titulo_texto} - {precio_texto}")
             
@@ -191,6 +235,7 @@ def extraer_info(query, limit_pages):
             urls.append(link)
             imagenes.append("Sin imagen")
             descuentos.append("Sin descuento")
+            atributos.append("Sin atributos")
 
     # Crear el DataFrame con las listas, incluyendo las imágenes
     df = pd.DataFrame({
@@ -199,6 +244,7 @@ def extraer_info(query, limit_pages):
         'Precio_antes': precios_antes,
         'Descuento': descuentos,
         'Precio': precios,
+        'Atributos': atributos,
         'URL': urls,
         'Imagen_URL': imagenes,  # Nueva columna para las imágenes
     })
