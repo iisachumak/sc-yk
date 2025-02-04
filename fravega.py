@@ -160,6 +160,7 @@ def extraer_info(query, limit_pages):
     urls = []
     imagenes = []
     atributos = []
+    cuotas = []
 
     # Crear barra de progreso
     progress_bar = st.progress(0)
@@ -188,6 +189,7 @@ def extraer_info(query, limit_pages):
             vendido_por_texto = vendido_por.text.strip() if vendido_por else "Otro seller"
             descuento_texto = descuento.text.strip() if descuento else "Sin descuento"
 
+
             atributos_texto = ""  # Inicializamos como string vacío
             # Atributos con selenium
             try:
@@ -212,7 +214,7 @@ def extraer_info(query, limit_pages):
                     atributos_lista = atributos_producto.find_elements(By.XPATH, "//span[@class='specName']")
                     atributos_valores = atributos_producto.find_elements(By.XPATH, "//span[@class='specValue']")
                     for atributo, valor in zip(atributos_lista, atributos_valores):
-                        atributos_texto += f"{atributo.text.strip()}: {valor.text.strip()} | "
+                        atributos_texto += f"{atributo.text.strip()}: {valor.text.lstrip()} | "
                     
                     if not atributos_texto:  # Si no se encontraron atributos
                         atributos_texto = "Sin atributos"
@@ -221,8 +223,22 @@ def extraer_info(query, limit_pages):
 
                 print(atributos_texto)
                 
+                cuotas_texto = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, "//div[@class='sc-f6cfc5e5-4 gJMUXT']"))
+                )
+                if cuotas_texto:
+                    cuotas_lista = cuotas_texto.find_elements(By.XPATH, "//span[@class='sc-f6cfc5e5-6 hCaOuw']")
+                    # Filtrar solo los textos no vacíos y limpiar espacios extras
+                    cuotas_filtradas = [cuota.text.strip() for cuota in cuotas_lista if cuota.text.strip()]
+                    cuotas_texto = " | ".join(cuotas_filtradas) if cuotas_filtradas else "Sin cuotas"
+                    print(cuotas_texto)
+                else:
+                    cuotas_texto = "Sin cuotas"
+                    print("Sin cuotas")
+                    
             except Exception as e:
                 print(f"Error al cargar {link}: {str(e)}")
+
 
             # Agregar datos a las listas
             titulos.append(titulo_texto)    
@@ -233,6 +249,7 @@ def extraer_info(query, limit_pages):
             urls.append(link)
             imagenes.append(imagen)  # Agregar la URL de la imagen
             atributos.append(atributos_texto)
+            cuotas.append(cuotas_texto)
 
             print(f"Producto agregado: {titulo_texto} - {precio_texto}")
             
@@ -246,6 +263,7 @@ def extraer_info(query, limit_pages):
             imagenes.append("Sin imagen")
             descuentos.append("Sin descuento")
             atributos.append("Sin atributos")
+            cuotas.append("Sin cuotas")
 
     # Crear el DataFrame con las listas, incluyendo las imágenes
     df = pd.DataFrame({
@@ -254,6 +272,7 @@ def extraer_info(query, limit_pages):
         'Precio_antes': precios_antes,
         'Descuento': descuentos,
         'Precio': precios,
+        'Cuotas': cuotas,
         'Atributos': atributos,
         'URL': urls,
         'Imagen_URL': imagenes,  # Nueva columna para las imágenes
