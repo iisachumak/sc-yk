@@ -87,9 +87,11 @@ def extraer_info(query, limit_pages):
     puntaje_producto = []
     producto_full = []
     tipo_de_envio_producto = []
+    producto_vendido_por = []
     #
     for link in links_productos:
         try:
+
             response = requests.get(link, headers=headers)
             soup = BeautifulSoup(response.content, 'html.parser')
             
@@ -163,7 +165,11 @@ def extraer_info(query, limit_pages):
                 cuotas_producto.append(cuotas.text if cuotas else "No tiene")
             except:
                 cuotas_producto.append("No se encontró cuotas")
-            time.sleep(2)
+
+            for _ in range(3):
+                driver.execute_script("window.scrollBy({ top: 2000, behavior: 'smooth' });")
+                time.sleep(2)
+
             #TIPO DE ENVIO
             try:
                 # Esperar a que los elementos de envío se carguen
@@ -195,11 +201,18 @@ def extraer_info(query, limit_pages):
                 seller_producto.append(seller.text if seller else "No se encontró seller")
             except:
                 seller_producto.append("No se encontró seller")
-            
+
+            #PRODUCTO VENDIDO POR
+            try:
+                producto_vendido = soup.find('span', class_='ui-pdp-color--BLACK ui-pdp-size--LARGE ui-pdp-family--REGULAR ui-seller-data-header__title non-selectable')
+                producto_vendido_por.append(producto_vendido.text if producto_vendido else "No tiene")
+            except:
+                producto_vendido_por.append("No se encontró producto vendido por")
+
 
             urls.append(link)
 
-            print(nombre_producto, precio_producto, precio_antes_producto, descuento_producto, mismo_precio_en_cuotas_producto, cuotas_producto, puntaje_producto, producto_full, tipo_de_envio_producto, urls)
+            print(nombre_producto, precio_producto, precio_antes_producto, descuento_producto, mismo_precio_en_cuotas_producto, cuotas_producto, puntaje_producto, producto_full, tipo_de_envio_producto, producto_vendido_por)
             
 
         except Exception as e:
@@ -214,10 +227,12 @@ def extraer_info(query, limit_pages):
             puntaje_producto.append("Error")
             producto_full.append("Error")
             tipo_de_envio_producto.append("Error")
+            producto_vendido_por.append("Error")
             urls.append(link)
             print(f"Error procesando link {link}: {str(e)}")
             continue
             
+
     driver.quit()
     
     df = pd.DataFrame({
@@ -228,10 +243,12 @@ def extraer_info(query, limit_pages):
         'Mismo precio en cuotas': mismo_precio_en_cuotas_producto,
         'Cuotas': cuotas_producto,
         'Seller': seller_producto,
+        'Producto vendido por': producto_vendido_por,
         'Puntaje': puntaje_producto,
         'Producto full': producto_full, 
         'Tipo de envio': tipo_de_envio_producto,
         'URL': urls
+
 
     })
     
@@ -240,5 +257,5 @@ def extraer_info(query, limit_pages):
     return df
         
 
-prueba = extraer_info("celular motorola", 1)
+prueba = extraer_info("celular", 1)
 print(prueba)
