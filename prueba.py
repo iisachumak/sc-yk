@@ -13,25 +13,55 @@ def extraer_url(query, limit_pages):
     
     driver = webdriver.Chrome(options=options)
 
+    pages = 1
+    links_de_las_paginas = []  # Inicializa la lista fuera del bucle
+
     url = f"https://listado.mercadolibre.com.ar/{query}"
     driver.get(url)
-
-    WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
-    time.sleep(2)
-
-    links_productos = WebDriverWait(driver, 20).until(
-        EC.presence_of_all_elements_located((By.XPATH, "//a[@class='poly-component__title']"))
-    )
-    links_de_las_paginas = []
-
-    for tag_a in links_productos:
-        links_de_las_paginas.append(tag_a.get_attribute('href'))
     
+    while pages <= limit_pages:
+
+        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+        time.sleep(2)
+
+        # Cerrar el modal si el límite de páginas es mayor a 1
+        if limit_pages > 1:
+            try:
+                cookie_banner = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[@class='cookie-consent-banner-opt-out__action cookie-consent-banner-opt-out__action--primary cookie-consent-banner-opt-out__action--key-accept']"))
+                )
+                cookie_banner.click()
+            except Exception as e:
+                print("No se encontró el banner de cookies o no se pudo cerrar:", e)
+
+        # Extraer los enlaces de los productos
+        links_productos = WebDriverWait(driver, 20).until(
+            EC.presence_of_all_elements_located((By.XPATH, "//a[@class='poly-component__title']"))
+        )
+
+        for tag_a in links_productos:
+            links_de_las_paginas.append(tag_a.get_attribute('href'))
+
+        # Hacer clic en el botón de paginación "siguiente" si no es la última página
+        if pages < limit_pages:
+            try:
+                siguiente_boton = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//a[@class='andes-pagination__link']//span[contains(text(), 'Siguiente')]"))
+                )
+                siguiente_boton.click()
+                time.sleep(2)  # Esperar a que la página se cargue
+            except Exception as e:
+                print("No se pudo hacer clic en el botón 'Siguiente':", e)
+                break  # Salir del bucle si no se puede hacer clic en "Siguiente"
+
+        pages += 1
+
     nombre =  []
     rating = []
     precio_anterior = []
     precio = []
     descuento = []
+    vendidos = []
     mismo_precio_en_cuotas = []
     envios = []
     seller = []
@@ -39,7 +69,9 @@ def extraer_url(query, limit_pages):
     atributos = []
     url = []
 
-    productos = 0
+    #producto = 0
+    print(len(links_de_las_paginas))
+    # EMPIEZA EL RECORRIDO
     for link in links_de_las_paginas:
         try:
             try:
@@ -49,7 +81,6 @@ def extraer_url(query, limit_pages):
             except Exception as e:
                 print(e)
             
-            # NOMBRE
             # NOMBRE
             try:
                 nombre_producto = driver.find_element(By.XPATH, "//h1[@class='ui-pdp-title']")
@@ -98,7 +129,8 @@ def extraer_url(query, limit_pages):
                 descuento_producto = 'none'
                 print(e)
             descuento.append(descuento_producto)
-                
+
+            # CUOTAS     
             try:
                 mismo_precio_cuotas = driver.find_element(By.XPATH, "//div[@class='ui-pdp-price__subtitles']")
                 mismo_precio_cuotas = mismo_precio_cuotas.text.replace('\n', '').replace('\r', '').replace('\t', '').strip()
@@ -106,6 +138,16 @@ def extraer_url(query, limit_pages):
                 mismo_precio_cuotas = 'none'
                 print(e)
             mismo_precio_en_cuotas.append(mismo_precio_cuotas)
+
+            # VENDIDOS
+            try:
+                cantidad_vandidos = driver.find_element(By.XPATH, "//span[@class='ui-pdp-subtitle']")
+                cantidad_vandidos = cantidad_vandidos.text
+            except:
+                print(e)
+                cantidad_vandidos = "none"
+            
+            vendidos.append(cantidad_vandidos)
 
             # ENVIO
             try:
@@ -179,10 +221,9 @@ def extraer_url(query, limit_pages):
             # URL
             url.append(link)
 
-            productos += 1
-
-            print(atributos)
-            print(productos)
+            #producto += 1
+            #print(producto, nombre, rating, precio_anterior, precio, descuento, vendidos, mismo_precio_en_cuotas, vendidos,mismo_precio_en_cuotas)
+            #
             driver.back()
 
         except Exception as e:
@@ -198,14 +239,14 @@ def extraer_url(query, limit_pages):
         'Cuotas': mismo_precio_en_cuotas,
         'Envios y Garantía': envios,
         'Seller': seller,
-        'Atributos': atributos,
         'Vendido por': vendido_por,
-        'URL': url
+        'Atributos': atributos,
+        'URL': url,
     })
 
     df.to_excel('mercadolibre.xlsx', index=False)
 
     return df
 
-prueba = extraer_url("celular", 1)
+prueba = extraer_url("bici giant", 2)
 print(prueba)
