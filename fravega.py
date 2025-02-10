@@ -55,10 +55,11 @@ def fravega():
         st.subheader("Imágenes de los productos")
         cols = st.columns(4)
         
-        for idx, (imagen_url, titulo) in enumerate(zip(st.session_state.df['Imagen_URL'], st.session_state.df['Nombre_del_producto'])):
+        for idx, (imagen_url, titulo, url_sitio) in enumerate(zip(st.session_state.df['Imagen_URL'], st.session_state.df['Nombre_del_producto'], st.session_state.df['URL'])):
             with cols[idx % 4]:
                 try:
                     st.image(imagen_url, caption=titulo)
+                    st.link_button("Ir a la publicación", url_sitio)
                 except Exception as e:
                     st.error(f"Error al cargar la imagen: {str(e)}")
     elif query:
@@ -192,6 +193,7 @@ def extraer_info(query, limit_pages):
 
             # Verificar y extraer datos
             titulo_texto = titulo.text.strip() if titulo else "Sin título"
+            st.toast(titulo_texto)
             precio_texto = precio.text.strip() if precio else "Sin precio"
             precio_antes_texto = precio_antes.text.strip() if precio_antes else "Sin precio"
             vendido_por_texto = vendido_por.text.strip() if vendido_por else "Otro seller"
