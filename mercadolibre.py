@@ -82,54 +82,56 @@ def extraer_url(query, limit_pages, limit_products):
     driver.get(url)
     
     while pages <= limit_pages and len(links_de_las_paginas) < limit_products:
-
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
-        time.sleep(2)
-
-        # Cerrar el modal si el límite de páginas es mayor a 1
-        if limit_pages > 1:
-            try:
-                cookie_banner = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[@class='cookie-consent-banner-opt-out__action cookie-consent-banner-opt-out__action--primary cookie-consent-banner-opt-out__action--key-accept']"))
-                )
-                cookie_banner.click()
-            except Exception as e:
-                print("No se encontró el banner de cookies o no se pudo cerrar:", e)
         
-        for _ in range(4):
-                driver.execute_script("window.scrollBy({ top: 3400, behavior: 'smooth' });")
-                time.sleep(2)
+        with st.spinner(f"Buscando productos..."):
 
-        # Extraer los enlaces de los productos
-        links_productos = WebDriverWait(driver, 20).until(
-            EC.presence_of_all_elements_located((By.XPATH, "//a[@class='poly-component__title']"))
-        )
+            WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+            time.sleep(2)
 
-        for tag_a in links_productos:
-            if len(links_de_las_paginas) < limit_products:
-                links_de_las_paginas.append(tag_a.get_attribute('href'))
-            else:
-                break
+            # Cerrar el modal si el límite de páginas es mayor a 1
+            if limit_pages > 1:
+                try:
+                    cookie_banner = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, "//button[@class='cookie-consent-banner-opt-out__action cookie-consent-banner-opt-out__action--primary cookie-consent-banner-opt-out__action--key-accept']"))
+                    )
+                    cookie_banner.click()
+                except Exception as e:
+                    print("No se encontró el banner de cookies o no se pudo cerrar:", e)
+            
+            for _ in range(4):
+                    driver.execute_script("window.scrollBy({ top: 3400, behavior: 'smooth' });")
+                    time.sleep(2)
 
-        # Hacer clic en el botón de paginación "siguiente" si no es la última página
-        if pages < limit_pages and len(links_de_las_paginas) < limit_products:
-            try:
-                siguiente_boton = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, "//a[@class='andes-pagination__link']//span[contains(text(), 'Siguiente')]"))
-                )
-                siguiente_boton.click()
-                time.sleep(2)  # Esperar a que la página se cargue
-            except Exception as e:
-                print("No se pudo hacer clic en el botón 'Siguiente':", e)
-                break  # Salir del bucle si no se puede hacer clic en "Siguiente"
+            # Extraer los enlaces de los productos
+            links_productos = WebDriverWait(driver, 20).until(
+                EC.presence_of_all_elements_located((By.XPATH, "//a[@class='poly-component__title']"))
+            )
+
+            for tag_a in links_productos:
+                if len(links_de_las_paginas) < limit_products:
+                    links_de_las_paginas.append(tag_a.get_attribute('href'))
+                else:
+                    break
+
+            # Hacer clic en el botón de paginación "siguiente" si no es la última página
+            if pages < limit_pages and len(links_de_las_paginas) < limit_products:
+                try:
+                    siguiente_boton = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, "//a[@class='andes-pagination__link']//span[contains(text(), 'Siguiente')]"))
+                    )
+                    siguiente_boton.click()
+                    time.sleep(2)  # Esperar a que la página se cargue
+                except Exception as e:
+                    print("No se pudo hacer clic en el botón 'Siguiente':", e)
+                    break  # Salir del bucle si no se puede hacer clic en "Siguiente"
+            
+            if pages == limit_pages or len(links_de_las_paginas) >= limit_products:
+                driver.quit()
+            
+            pages += 1
+            print(len(links_de_las_paginas))
         
-        if pages == limit_pages or len(links_de_las_paginas) >= limit_products:
-            driver.quit()
-        
-        pages += 1
-        print(len(links_de_las_paginas))
-    
-    return links_de_las_paginas
+        return links_de_las_paginas
 
 def extraer_info(query, limit_pages, limit_products):
     links_productos = extraer_url(query, limit_pages, limit_products)
@@ -156,12 +158,12 @@ def extraer_info(query, limit_pages, limit_products):
     atributos = []
     imagenes = []
     url = []
+    producto_full = []
 
     # Inicializar la barra de progreso
     progress_bar = st.progress(0)
     total_links = len(links_productos)
 
-    msg_encontrados = st.success(f'{len(links_productos)} productos encontrados!')
 
     # EMPIEZA EL RECORRIDO
     for idx, link in enumerate(links_productos):
@@ -187,6 +189,7 @@ def extraer_info(query, limit_pages, limit_products):
             try:
                 nombre_producto = driver.find_element(By.XPATH, "//h1[@class='ui-pdp-title']")
                 nombre_producto = nombre_producto.text
+                #st.toast(nombre_producto)
                 st.toast(nombre_producto)
             except Exception as e:
                 nombre_producto = "none"
@@ -266,6 +269,16 @@ def extraer_info(query, limit_pages, limit_products):
             except Exception as e:
                 envios.append("none")
                 print(f"Error: {e}")
+            
+            #PRODUCTO FULL
+            try:
+                full = driver.find_element(By.XPATH, "//div[@class='ui-pdp-media ui-pdp-promotions-pill-label__icon']")
+                if full:
+                    producto_full.append("Si")
+                else:
+                    producto_full.append("No")
+            except:
+                producto_full.append("No")
 
             # URL IMAGEN
             try:
@@ -350,6 +363,7 @@ def extraer_info(query, limit_pages, limit_products):
         'Descuento': descuento,
         'Cuotas': mismo_precio_en_cuotas,
         'Envios y Garantía': envios,
+        'Producto_full': producto_full,
         'Seller': seller,
         'Vendido por': vendido_por,
         'Atributos': atributos,

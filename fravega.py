@@ -83,65 +83,66 @@ def extraer_links(query, limit_pages):
 
     pages = 1
     while pages <= limit_pages:
-        url = f"https://www.fravega.com/l/?keyword={query}&page={pages}"
-        driver.get(url)
-        # Esperamos y cerramos el modal si existe
-        try:
-            modal_close = WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.XPATH, "//button[@class='sc-eifrsQ bvPMIe']"))
-            )
-            WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+        with st.spinner(f"Buscando productos..."):
+            url = f"https://www.fravega.com/l/?keyword={query}&page={pages}"
+            driver.get(url)
+            # Esperamos y cerramos el modal si existe
+            try:
+                modal_close = WebDriverWait(driver, 20).until(
+                    EC.presence_of_element_located((By.XPATH, "//button[@class='sc-eifrsQ bvPMIe']"))
+                )
+                WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
+                time.sleep(2)
+                if modal_close:
+                    print("Modal encontrado")
+                    modal_close.click()
+            except:
+                pass  # Si no hay modal, continuamos
+
+            # Esperamos que se carguen los productos
+            WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, "//article[@class='sc-f0dec281-2 cKluyL']")))
+
+            # Hacemos scroll para que se carguen los productos
+            driver.execute_script("window.scrollBy({ top: 1200, behavior: 'smooth' });")
             time.sleep(2)
-            if modal_close:
-                print("Modal encontrado")
-                modal_close.click()
-        except:
-            pass  # Si no hay modal, continuamos
+            driver.execute_script("window.scrollBy({ top: 2500, behavior: 'smooth' });")
+            time.sleep(2)
 
-        # Esperamos que se carguen los productos
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, "//article[@class='sc-f0dec281-2 cKluyL']")))
-
-        # Hacemos scroll para que se carguen los productos
-        driver.execute_script("window.scrollBy({ top: 1200, behavior: 'smooth' });")
-        time.sleep(2)
-        driver.execute_script("window.scrollBy({ top: 2500, behavior: 'smooth' });")
-        time.sleep(2)
-
-        #obtenemos los links de las fichas
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.XPATH, "//a[@class='sc-f0dec281-0 kYvfPh']"))
-        )
-        links_products = driver.find_elements(By.XPATH, "//a[@class='sc-f0dec281-0 kYvfPh']")
-        
-        #obtenemos los links de las imagenes
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_all_elements_located((By.XPATH, "//img[@class='sc-1362d5fd-0 kvoSnj']"))
-        )
-        links_images = driver.find_elements(By.XPATH, "//img[@class='sc-1362d5fd-0 kvoSnj']")
-
-        #recorremos los links de las fichas y los agregamos a la lista
-        for tags_a in links_products:
-            href = tags_a.get_attribute("href")
-            if href:  # Solo agregamos el link si no es None
-                links_de_la_pagina.append(href)
-                
-        #recorremos los links de las imagenes y los agregamos a la lista
-        for tags_img in links_images:
-            src = tags_img.get_attribute("src")
-            if src:  # Solo agregamos el link si no es None
-                links_de_las_imagenes.append(src)
+            #obtenemos los links de las fichas
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.XPATH, "//a[@class='sc-f0dec281-0 kYvfPh']"))
+            )
+            links_products = driver.find_elements(By.XPATH, "//a[@class='sc-f0dec281-0 kYvfPh']")
             
-        #imprimimos la lista de links de las fichas
-        print(links_de_la_pagina)
-        #imprimimos la lista de links de las imagenes
-        print(links_de_las_imagenes)
-        #incrementamos la pagina
-        pages += 1
+            #obtenemos los links de las imagenes
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located((By.XPATH, "//img[@class='sc-1362d5fd-0 kvoSnj']"))
+            )
+            links_images = driver.find_elements(By.XPATH, "//img[@class='sc-1362d5fd-0 kvoSnj']")
 
-    # Cerramos el driver al finalizar
-    driver.quit()
-    print(f"len(links_de_la_pagina): {len(links_de_la_pagina)}")
-    return links_de_la_pagina, links_de_las_imagenes
+            #recorremos los links de las fichas y los agregamos a la lista
+            for tags_a in links_products:
+                href = tags_a.get_attribute("href")
+                if href:  # Solo agregamos el link si no es None
+                    links_de_la_pagina.append(href)
+                    
+            #recorremos los links de las imagenes y los agregamos a la lista
+            for tags_img in links_images:
+                src = tags_img.get_attribute("src")
+                if src:  # Solo agregamos el link si no es None
+                    links_de_las_imagenes.append(src)
+                
+            #imprimimos la lista de links de las fichas
+            print(links_de_la_pagina)
+            #imprimimos la lista de links de las imagenes
+            print(links_de_las_imagenes)
+            #incrementamos la pagina
+            pages += 1
+
+        # Cerramos el driver al finalizar
+        driver.quit()
+        print(f"len(links_de_la_pagina): {len(links_de_la_pagina)}")
+        return links_de_la_pagina, links_de_las_imagenes
 
 def extraer_info(query, limit_pages):
     # Obtener tanto los links de productos como de imágenes
